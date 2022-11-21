@@ -26,7 +26,7 @@ diff --git a/buildSrc/src/main/java/org/opensearch/gradle/DistributionDownloadPl
 index eb3cd4d0894..5103433149d 100644
 --- a/buildSrc/src/main/java/org/opensearch/gradle/DistributionDownloadPlugin.java
 +++ b/buildSrc/src/main/java/org/opensearch/gradle/DistributionDownloadPlugin.java
-@@ -247,8 +247,8 @@ public class DistributionDownloadPlugin implements Plugin<Project> {
+@@ -217,8 +217,8 @@ public class DistributionDownloadPlugin implements Plugin<Project> {
                      case X64:
                          classifier = ":" + distribution.getPlatform() + "-x64";
                          break;
