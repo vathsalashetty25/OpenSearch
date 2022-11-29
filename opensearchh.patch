@@ -165,6 +165,73 @@ index 7e0007f04c9..edc6372e26b 100644
      } else {
        from configurations.dockerSource
      }
+diff --git a/distribution/packages/build.gradle b/distribution/packages/build.gradle
+index d9db3448104..ffa83cf0f1d 100644
+--- a/distribution/packages/build.gradle
++++ b/distribution/packages/build.gradle
+@@ -115,6 +115,8 @@ Closure commonPackageConfig(String type, boolean jdk, String architecture) {
+     if (type == 'deb') {
+       if (architecture == 'x64') {
+         arch('amd64')
++      } else if (architecture == 'ppc64le') {
++        arch('ppc64le')
+       } else {
+         assert architecture == 'arm64' : architecture
+         arch('arm64')
+@@ -123,6 +125,8 @@ Closure commonPackageConfig(String type, boolean jdk, String architecture) {
+       assert type == 'rpm' : type
+       if (architecture == 'x64') {
+         arch('x86_64')
++      } else if (architecture == 'ppc64le') {
++        arch('ppc64le')
+       } else {
+         assert architecture == 'arm64' : architecture
+         arch('aarch64')
+@@ -130,7 +134,7 @@ Closure commonPackageConfig(String type, boolean jdk, String architecture) {
+     }
+     // Follow opensearch's file naming convention
+     String jdkString = jdk ? "" : "-no-jdk"
+-    String prefix = "${architecture == 'arm64' ? 'arm64-' : ''}${jdk ? '' : 'no-jdk-'}${type}"
++    String prefix = "${architecture == 'arm64' ? 'arm64-' : (architecture == 'ppc64le' ? 'ppc64le-' : '')}${jdk ? '' : 'no-jdk-'}${type}"
+     destinationDirectory = file("${prefix}/build/distributions")
+
+     // SystemPackagingTask overrides default archive task convention mappings, but doesn't provide a setter so we have to override the convention mapping itself
+@@ -349,11 +353,18 @@ Closure commonDebConfig(boolean jdk, String architecture) {
+ tasks.register('buildArm64Deb', Deb) {
+   configure(commonDebConfig(true, 'arm64'))
+ }
++tasks.register('buildPpc64leDeb', Deb) {
++  configure(commonDebConfig(true, 'ppc64le'))
++}
+
+ tasks.register('buildNoJdkArm64Deb', Deb) {
+   configure(commonDebConfig(false, 'arm64'))
+ }
+
++tasks.register('buildNoJdkPpc64leDeb', Deb) {
++  configure(commonDebConfig(false, 'ppc64le'))
++}
++
+ tasks.register('buildDeb', Deb) {
+   configure(commonDebConfig(true, 'x64'))
+ }
+@@ -390,10 +401,16 @@ Closure commonRpmConfig(boolean jdk, String architecture) {
+ tasks.register('buildArm64Rpm', Rpm) {
+   configure(commonRpmConfig(true, 'arm64'))
+ }
++tasks.register('buildPpc64leRpm', Rpm) {
++  configure(commonRpmConfig(true, 'ppc64le'))
++}
+
+ tasks.register('buildNoJdkArm64Rpm', Rpm) {
+   configure(commonRpmConfig(false, 'arm64'))
+ }
++tasks.register('buildNoJdkPpc64leRpm', Rpm) {
++  configure(commonRpmConfig(false, 'ppc64le'))
++}
+
+ tasks.register('buildRpm', Rpm) {
+   configure(commonRpmConfig(true, 'x64'))
 diff --git a/distribution/docker/src/docker/config/opensearch.yml b/distribution/docker/src/docker/config/opensearch.yml
 index 50b154702b9..f20a45bc43d 100644
 --- a/distribution/docker/src/docker/config/opensearch.yml
@@ -189,10 +256,10 @@ index 7d567d73851..5792452e84f 100644
      }
 
 diff --git a/settings.gradle b/settings.gradle
-index ed01f4c4339..a4be462b0a9 100644
+index ed01f4c4339..252d3a326fb 100644
 --- a/settings.gradle
 +++ b/settings.gradle
-@@ -49,12 +49,14 @@ List projects = [
+@@ -49,20 +49,26 @@ List projects = [
    'distribution:archives:linux-arm64-tar',
    'distribution:archives:no-jdk-linux-arm64-tar',
    'distribution:archives:linux-s390x-tar',
@@ -207,3 +274,15 @@ index ed01f4c4339..a4be462b0a9 100644
    'distribution:docker:docker-build-context',
    'distribution:docker:docker-export',
    'distribution:packages:arm64-deb',
++  'distribution:packages:ppc64le-deb',
+   'distribution:packages:no-jdk-arm64-deb',
++  'distribution:packages:no-jdk-ppc64le-deb',
+   'distribution:packages:deb',
+   'distribution:packages:no-jdk-deb',
+   'distribution:packages:arm64-rpm',
++  'distribution:packages:ppc64le-rpm',
+   'distribution:packages:no-jdk-arm64-rpm',
++  'distribution:packages:no-jdk-ppc64le-rpm',
+   'distribution:packages:rpm',
+   'distribution:packages:no-jdk-rpm',
+   'distribution:bwc:bugfix',
