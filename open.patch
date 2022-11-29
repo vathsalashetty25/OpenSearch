@@ -72,6 +72,7 @@ index ad17032e718..4d324c1cf8b 100644
 +            "unknown architecture [unknown] for jdk [testjdk], must be one of [aarch64, x64, s390x, ppc64le]"
          );
      }
+     
 diff --git a/distribution/docker/build.gradle b/distribution/docker/build.gradle
 index 7e0007f04c9..c0ab9b8085c 100644
 --- a/distribution/docker/build.gradle
