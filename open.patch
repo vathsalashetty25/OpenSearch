@@ -72,7 +72,6 @@ index ad17032e718..4d324c1cf8b 100644
 +            "unknown architecture [unknown] for jdk [testjdk], must be one of [aarch64, x64, s390x, ppc64le]"
          );
      }
-
 diff --git a/distribution/docker/build.gradle b/distribution/docker/build.gradle
 index 7e0007f04c9..c0ab9b8085c 100644
 --- a/distribution/docker/build.gradle
@@ -147,7 +146,6 @@ index 7e0007f04c9..c0ab9b8085c 100644
 +    final String arch = architecture == Architecture.ARM64 ? '-arm64' : (architecture == Architecture.PPC64LE ? '-ppc64le' : '')
      final String extension = 'docker.tar'
      final String artifactName = "opensearch${arch}_test
-     
 diff --git a/distribution/archives/build.gradle b/distribution/archives/build.gradle
 index 587175eef40..657d3d9e4e2 100644
 --- a/distribution/archives/build.gradle
