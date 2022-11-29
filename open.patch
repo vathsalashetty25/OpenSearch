@@ -1,0 +1,315 @@
+diff --git a/buildSrc/src/main/java/org/opensearch/gradle/Architecture.java b/buildSrc/src/main/java/org/opensearch/gradle/Architecture.java
+index 2bd87d6fa50..b16f35a9ad0 100644
+--- a/buildSrc/src/main/java/org/opensearch/gradle/Architecture.java
++++ b/buildSrc/src/main/java/org/opensearch/gradle/Architecture.java
+@@ -36,7 +36,8 @@ public enum Architecture {
+
+     X64,
+     ARM64,
+-    S390X;
++    S390X,
++    PPC64LE;
+
+     public static Architecture current() {
+         final String architecture = System.getProperty("os.arch", "");
+@@ -48,6 +49,8 @@ public enum Architecture {
+                 return ARM64;
+             case "s390x":
+                 return S390X;
++            case "ppc64le":
++                return PPC64LE;
+             default:
+                 throw new IllegalArgumentException("can not determine architecture from [" + architecture + "]");
+         }
+diff --git a/buildSrc/src/main/java/org/opensearch/gradle/DistributionDownloadPlugin.java b/buildSrc/src/main/java/org/opensearch/gradle/DistributionDownloadPlugin.java
+index 87a565e6f44..415d5e58026 100644
+--- a/buildSrc/src/main/java/org/opensearch/gradle/DistributionDownloadPlugin.java
++++ b/buildSrc/src/main/java/org/opensearch/gradle/DistributionDownloadPlugin.java
+@@ -220,6 +220,9 @@ public class DistributionDownloadPlugin implements Plugin<Project> {
+                 case S390X:
+                     classifier = ":" + distribution.getPlatform() + "-s390x";
+                     break;
++                case PPC64LE:
++                    classifier = ":" + distribution.getPlatform() + "-ppc64le";
++                    break;
+                 default:
+                     throw new IllegalArgumentException("Unsupported architecture: " + distribution.getArchitecture());
+             }
+diff --git a/buildSrc/src/main/java/org/opensearch/gradle/Jdk.java b/buildSrc/src/main/java/org/opensearch/gradle/Jdk.java
+index 08b7054d7d5..8b053799456 100644
+--- a/buildSrc/src/main/java/org/opensearch/gradle/Jdk.java
++++ b/buildSrc/src/main/java/org/opensearch/gradle/Jdk.java
+@@ -49,7 +49,7 @@ import java.util.regex.Pattern;
+
+ public class Jdk implements Buildable, Iterable<File> {
+
+-    private static final List<String> ALLOWED_ARCHITECTURES = Collections.unmodifiableList(Arrays.asList("aarch64", "x64", "s390x"));
++    private static final List<String> ALLOWED_ARCHITECTURES = Collections.unmodifiableList(Arrays.asList("aarch64", "x64", "s390x", "ppc64le"));
+     private static final List<String> ALLOWED_VENDORS = Collections.unmodifiableList(Arrays.asList("adoptium", "adoptopenjdk", "openjdk"));
+     private static final List<String> ALLOWED_PLATFORMS = Collections.unmodifiableList(
+         Arrays.asList("darwin", "freebsd", "linux", "mac", "windows")
+diff --git a/buildSrc/src/test/java/org/opensearch/gradle/ArchitectureTests.java b/buildSrc/src/test/java/org/opensearch/gradle/ArchitectureTests.java
+index 05f920c6c92..2df8c1995c8 100644
+--- a/buildSrc/src/test/java/org/opensearch/gradle/ArchitectureTests.java
++++ b/buildSrc/src/test/java/org/opensearch/gradle/ArchitectureTests.java
+@@ -19,6 +19,7 @@ public class ArchitectureTests extends GradleUnitTestCase {
+         assertEquals(Architecture.X64, currentArchitecture("x86_64"));
+         assertEquals(Architecture.ARM64, currentArchitecture("aarch64"));
+         assertEquals(Architecture.S390X, currentArchitecture("s390x"));
++        assertEquals(Architecture.PPC64LE, currentArchitecture("ppc64le"));
+     }
+
+     public void testInvalidCurrentArchitecture() {
+diff --git a/buildSrc/src/test/java/org/opensearch/gradle/JdkDownloadPluginTests.java b/buildSrc/src/test/java/org/opensearch/gradle/JdkDownloadPluginTests.java
+index ad17032e718..4d324c1cf8b 100644
+--- a/buildSrc/src/test/java/org/opensearch/gradle/JdkDownloadPluginTests.java
++++ b/buildSrc/src/test/java/org/opensearch/gradle/JdkDownloadPluginTests.java
+@@ -108,7 +108,7 @@ public class JdkDownloadPluginTests extends GradleUnitTestCase {
+             "11.0.2+33",
+             "linux",
+             "unknown",
+-            "unknown architecture [unknown] for jdk [testjdk], must be one of [aarch64, x64, s390x]"
++            "unknown architecture [unknown] for jdk [testjdk], must be one of [aarch64, x64, s390x, ppc64le]"
+         );
+     }
+
+diff --git a/distribution/docker/build.gradle b/distribution/docker/build.gradle
+index 7e0007f04c9..c0ab9b8085c 100644
+--- a/distribution/docker/build.gradle
++++ b/distribution/docker/build.gradle
+@@ -28,12 +28,14 @@ testFixtures.useFixture()
+ configurations {
+   arm64DockerSource
+   s390xDockerSource
++  ppc64leDockerSource
+   dockerSource
+ }
+
+ dependencies {
+   arm64DockerSource project(path: ":distribution:archives:linux-arm64-tar", configuration:"default")
+   s390xDockerSource project(path: ":distribution:archives:linux-s390x-tar", configuration:"default")
++  ppc64leDockerSource project(path: ":distribution:archives:linux-ppc64le-tar", configuration:"default")
+   dockerSource project(path: ":distribution:archives:linux-tar", configuration:"default")
+ }
+
+@@ -46,6 +48,8 @@ ext.expansions = { Architecture architecture, DockerBase base, boolean local ->
+       classifier = "linux-x64"
+     } else if (architecture == Architecture.S390X) {
+       classifier = "linux-s390x"
++    } else if (architecture == Architecture.PPC64LE) {
++      classifier = "linux-ppc64le"
+     } else {
+       throw new IllegalArgumentException("Unsupported architecture [" + architecture + "]")
+     }
+@@ -90,6 +94,7 @@ private static String buildPath(Architecture architecture, DockerBase base) {
+   return 'build/' +
+     (architecture == Architecture.ARM64 ? 'arm64-' : '') +
+     (architecture == Architecture.S390X ? 's390x-' : '') +
++    (architecture == Architecture.PPC64LE ? 'ppc64le-' : '') +
+     'docker'
+ }
+
+@@ -97,6 +102,7 @@ private static String taskName(String prefix, Architecture architecture, DockerB
+   return prefix +
+     (architecture == Architecture.ARM64 ? 'Arm64' : '') +
+     (architecture == Architecture.S390X ? 'S390x' : '') +
++    (architecture == Architecture.PPC64LE ? 'Ppc64le' : '') +
+     suffix
+ }
+
+@@ -135,6 +141,8 @@ void addCopyDockerContextTask(Architecture architecture, DockerBase base) {
+       from configurations.arm64DockerSource
+     } else if (architecture == Architecture.S390X) {
+       from configurations.s390xDockerSource
++    } else if (architecture == Architecture.PPC64LE) {
++      from configurations.ppc64leDockerSource
+     } else {
+       from configurations.dockerSource
+     }
+@@ -152,7 +160,7 @@ def createAndSetWritable(Object... locations) {
+
+ opensearch_distributions {
+   Architecture.values().each { eachArchitecture ->
+-    "docker${ eachArchitecture == Architecture.ARM64 ? '_arm64' : '' }" {
++    "docker${ eachArchitecture == Architecture.ARM64 ? '_arm64' :  '' }" {
+       architecture = eachArchitecture
+       type = 'docker'
+       version = VersionProperties.getOpenSearch()
+@@ -239,10 +247,10 @@ subprojects { Project subProject ->
+   if (subProject.name.endsWith('-export')) {
+     apply plugin: 'distribution'
+
+-    final Architecture architecture = subProject.name.contains('arm64-') ? Architecture.ARM64 : Architecture.X64
++    final Architecture architecture = subProject.name.contains('arm64-') ? Architecture.ARM64 : (subProject.name.contains('ppc64le-') ? Architecture.PPC64LE : Architecture.X64)
+     final DockerBase base = DockerBase.CENTOS
+
+-    final String arch = architecture == Architecture.ARM64 ? '-arm64' : ''
++    final String arch = architecture == Architecture.ARM64 ? '-arm64' : (architecture == Architecture.PPC64LE ? '-ppc64le' : '')
+     final String extension = 'docker.tar'
+     final String artifactName = "opensearch${arch}_test
+diff --git a/distribution/archives/build.gradle b/distribution/archives/build.gradle
+index 587175eef40..657d3d9e4e2 100644
+--- a/distribution/archives/build.gradle
++++ b/distribution/archives/build.gradle
+@@ -136,6 +136,12 @@ distribution_archives {
+       archiveFiles(modulesFiles('linux-arm64'), 'tar', 'linux', 'arm64', true)
+     }
+   }
++  linuxPpc64leTar {
++    archiveClassifier = 'linux-ppc64le'
++    content {
++      archiveFiles(modulesFiles('linux-ppc64le'), 'tar', 'linux', 'ppc64le', true)
++    }
++  }
+
+   noJdkLinuxArm64Tar {
+     archiveClassifier = 'no-jdk-linux-arm64'
+@@ -143,6 +149,12 @@ distribution_archives {
+       archiveFiles(modulesFiles('linux-arm64'), 'tar', 'linux', 'arm64', false)
+     }
+   }
++  noJdkLinuxPpc64leTar {
++    archiveClassifier = 'no-jdk-linux-ppc64le'
++    content {
++      archiveFiles(modulesFiles('linux-ppc64le'), 'tar', 'linux', 'ppc64le', false)
++    }
++  }
+
+   linuxTar {
+     archiveClassifier = 'linux-x64'
+@@ -166,6 +178,12 @@ distribution_archives {
+       archiveFiles(modulesFiles('linux-s390x'), 'tar', 'linux', 's390x', false)
+     }
+   }
++  linuxPpc64leTar {
++    archiveClassifier = 'linux-ppc64le'
++    content {
++      archiveFiles(modulesFiles('linux-ppc64le'), 'tar', 'linux', 'ppc64le', false)
++    }
++  }
+
+   windowsZip {
+     archiveClassifier = 'windows-x64'
+diff --git a/distribution/packages/build.gradle b/distribution/packages/build.gradle
+index d9db3448104..ffa83cf0f1d 100644
+--- a/distribution/packages/build.gradle
++++ b/distribution/packages/build.gradle
+@@ -115,6 +115,8 @@ Closure commonPackageConfig(String type, boolean jdk, String architecture) {
+     if (type == 'deb') {
+       if (architecture == 'x64') {
+         arch('amd64')
++      } else if (architecture == 'ppc64le') {
++        arch('ppc64le')
+       } else {
+         assert architecture == 'arm64' : architecture
+         arch('arm64')
+@@ -123,6 +125,8 @@ Closure commonPackageConfig(String type, boolean jdk, String architecture) {
+       assert type == 'rpm' : type
+       if (architecture == 'x64') {
+         arch('x86_64')
++      } else if (architecture == 'ppc64le') {
++        arch('ppc64le')
+       } else {
+         assert architecture == 'arm64' : architecture
+         arch('aarch64')
+@@ -130,7 +134,7 @@ Closure commonPackageConfig(String type, boolean jdk, String architecture) {
+     }
+     // Follow opensearch's file naming convention
+     String jdkString = jdk ? "" : "-no-jdk"
+-    String prefix = "${architecture == 'arm64' ? 'arm64-' : ''}${jdk ? '' : 'no-jdk-'}${type}"
++    String prefix = "${architecture == 'arm64' ? 'arm64-' : (architecture == 'ppc64le' ? 'ppc64le-' : '')}${jdk ? '' : 'no-jdk-'}${type}"
+     destinationDirectory = file("${prefix}/build/distributions")
+
+     // SystemPackagingTask overrides default archive task convention mappings, but doesn't provide a setter so we have to override the convention mapping itself
+@@ -349,11 +353,18 @@ Closure commonDebConfig(boolean jdk, String architecture) {
+ tasks.register('buildArm64Deb', Deb) {
+   configure(commonDebConfig(true, 'arm64'))
+ }
++tasks.register('buildPpc64leDeb', Deb) {
++  configure(commonDebConfig(true, 'ppc64le'))
++}
+
+ tasks.register('buildNoJdkArm64Deb', Deb) {
+   configure(commonDebConfig(false, 'arm64'))
+ }
+
++tasks.register('buildNoJdkPpc64leDeb', Deb) {
++  configure(commonDebConfig(false, 'ppc64le'))
++}
++
+ tasks.register('buildDeb', Deb) {
+   configure(commonDebConfig(true, 'x64'))
+ }
+@@ -390,10 +401,16 @@ Closure commonRpmConfig(boolean jdk, String architecture) {
+ tasks.register('buildArm64Rpm', Rpm) {
+   configure(commonRpmConfig(true, 'arm64'))
+ }
++tasks.register('buildPpc64leRpm', Rpm) {
++  configure(commonRpmConfig(true, 'ppc64le'))
++}
+
+ tasks.register('buildNoJdkArm64Rpm', Rpm) {
+   configure(commonRpmConfig(false, 'arm64'))
+ }
++tasks.register('buildNoJdkPpc64leRpm', Rpm) {
++  configure(commonRpmConfig(false, 'ppc64le'))
++}
+
+ tasks.register('buildRpm', Rpm) {
+   configure(commonRpmConfig(true, 'x64'))
+diff --git a/distribution/docker/src/docker/config/opensearch.yml b/distribution/docker/src/docker/config/opensearch.yml
+index 50b154702b9..f20a45bc43d 100644
+--- a/distribution/docker/src/docker/config/opensearch.yml
++++ b/distribution/docker/src/docker/config/opensearch.yml
+@@ -1,2 +1,6 @@
+ cluster.name: "docker-cluster"
+ network.host: 0.0.0.0
++pack.ml.enabled: false
++discovery.seed_hosts: []
++bootstrap.system_call_filter: false
++discovery.type: single-node
+diff --git a/server/src/main/java/org/opensearch/bootstrap/SystemCallFilter.java b/server/src/main/java/org/opensearch/bootstrap/SystemCallFilter.java
+index 7d567d73851..5792452e84f 100644
+--- a/server/src/main/java/org/opensearch/bootstrap/SystemCallFilter.java
++++ b/server/src/main/java/org/opensearch/bootstrap/SystemCallFilter.java
+@@ -260,6 +260,7 @@ final class SystemCallFilter {
+         m.put("amd64", new Arch(0xC000003E, 0x3FFFFFFF, 57, 58, 59, 322, 317));
+         m.put("aarch64", new Arch(0xC00000B7, 0xFFFFFFFF, 1079, 1071, 221, 281, 277));
+         m.put("s390x", new Arch(0x80000016, 0xFFFFFFFF, 2, 190, 11, 354, 348));
++        m.put("ppc64le", new Arch(0xC0000015, 0xFFFFFFFF, 2, 189, 11, 362, 358));
+         ARCHITECTURES = Collections.unmodifiableMap(m);
+     }
+
+diff --git a/settings.gradle b/settings.gradle
+index ed01f4c4339..25c40a69781 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -48,21 +48,28 @@ List projects = [
+   'distribution:archives:no-jdk-freebsd-tar',
+   'distribution:archives:linux-arm64-tar',
+   'distribution:archives:no-jdk-linux-arm64-tar',
++  'distribution:archives:no-jdk-linux-ppc64le-tar',
+   'distribution:archives:linux-s390x-tar',
++  'distribution:archives:linux-ppc64le-tar',
+   'distribution:archives:linux-tar',
+   'distribution:archives:no-jdk-linux-tar',
+   'distribution:docker',
+   'distribution:docker:docker-arm64-build-context',
+   'distribution:docker:docker-arm64-export',
+   'distribution:docker:docker-s390x-export',
++  'distribution:docker:docker-ppc64le-export',
+   'distribution:docker:docker-build-context',
+   'distribution:docker:docker-export',
+   'distribution:packages:arm64-deb',
++  'distribution:packages:ppc64le-deb',
+   'distribution:packages:no-jdk-arm64-deb',
++  'distribution:packages:no-jdk-ppc64le-deb',
+   'distribution:packages:deb',
+   'distribution:packages:no-jdk-deb',
+   'distribution:packages:arm64-rpm',
++  'distribution:packages:ppc64le-rpm',
+   'distribution:packages:no-jdk-arm64-rpm',
++  'distribution:packages:no-jdk-ppc64le-rpm',
+   'distribution:packages:rpm',
+   'distribution:packages:no-jdk-rpm',
+   'distribution:bwc:bugfix',
