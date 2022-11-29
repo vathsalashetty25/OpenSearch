@@ -144,7 +144,7 @@ index 7e0007f04c9..edc6372e26b 100644
    return 'build/' +
      (architecture == Architecture.ARM64 ? 'arm64-' : '') +
      (architecture == Architecture.S390X ? 's390x-' : '') +
-+    (architecture == Architecture.S390X ? 'ppc64le-' : '') +
++    (architecture == Architecture.PPC64LE ? 'ppc64le-' : '') +
      'docker'
  }
 
