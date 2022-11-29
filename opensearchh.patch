@@ -165,6 +165,17 @@ index 7e0007f04c9..edc6372e26b 100644
      } else {
        from configurations.dockerSource
      }
+diff --git a/distribution/docker/src/docker/config/opensearch.yml b/distribution/docker/src/docker/config/opensearch.yml
+index 50b154702b9..f20a45bc43d 100644
+--- a/distribution/docker/src/docker/config/opensearch.yml
++++ b/distribution/docker/src/docker/config/opensearch.yml
+@@ -1,2 +1,6 @@
+ cluster.name: "docker-cluster"
+ network.host: 0.0.0.0
++pack.ml.enabled: false
++discovery.seed_hosts: []
++bootstrap.system_call_filter: false
++discovery.type: single-node
 diff --git a/server/src/main/java/org/opensearch/bootstrap/SystemCallFilter.java b/server/src/main/java/org/opensearch/bootstrap/SystemCallFilter.java
 index 7d567d73851..5792452e84f 100644
 --- a/server/src/main/java/org/opensearch/bootstrap/SystemCallFilter.java
